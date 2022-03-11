@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>To do list</title>
+    <link rel="shortcut icon" href="favicon.png" type="image/x-png">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/backdrop.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/shift-away.css"/>
+  </head>
+  <body>
+    <section id="app">
+      <!-- Edit Task -->
+      <div class="modal" id="editTaskModal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Edit Task</p>
+            <button class="delete" aria-label="close" @click="hideEditTaskModal"></button>
+          </header>
+          <section class="modal-card-body">
+            <div class="field is-grouped">
+              <!-- Name -->
+              <div class="control">
+                <input class="input" type="text" placeholder="Task Name" v-model="editTask.name">
+              </div>
+              <!-- List -->
+              <div class="control">
+                <div class="select">
+                  <select v-model="editTask.listId">
+                    <option value="null" selected disabled>-- Select a list --</option>
+                    <option v-for="list in todoLists" :value="list.id">{{ list.name }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="field is-grouped is-flex is-align-items-center">
+              <!-- DueDate -->
+              <div class="control">
+                <input class="input" type="date" v-model="editTask.due">
+              </div>
+              <!-- Flag -->
+              <div class="control">
+                <span class="icon-text is-clickable tags has-addons" @click="editTask.isFlagged = !editTask.isFlagged">
+                  <span :class="['icon tag is-medium has-background-dark', editTask.isFlagged ? 'has-text-warning' : 'has-text-light']">
+                    <i class="fas fa-flag"></i>
+                  </span>
+                  <span class="tag is-link is-medium is-unselectable">Flag</span>
+                </span>
+              </div>
+              <!-- Black -->
+              <div class="control is-flex">
+                <span class="icon is-medium has-background-black box is-clickable" @click="editTask.color = 'black'">
+                  <span v-if="editTask.color === 'black'">
+                    <i class="fas fa-check fa-fw has-text-white"></i>
+                  </span>
+                </span>
+              </div>
+              <!-- Red -->
+              <div class="control is-flex">
+                <span class="icon is-medium has-background-danger box is-clickable" @click="editTask.color = 'red'">
+                  <span v-if="editTask.color === 'red'">
+                    <i class="fas fa-check fa-fw has-text-white"></i>
+                  </span>
+                </span>
+              </div>
+              <!-- Green -->
+              <div class="control is-flex">
+                <span class="icon is-medium has-background-success box is-clickable" @click="editTask.color = 'green'">
+                  <span v-if="editTask.color === 'green'">
+                    <i class="fas fa-check fa-fw has-text-white"></i>
+                  </span>
+                </span>
+              </div>
+            </div>
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button is-success" @click="saveEditTask()">Save</button>
+            <button class="button" @click="hideEditTaskModal">Cancel</button>
+          </footer>
+        </div>
+      </div>
+      <!-- Delete Task -->
+      <div class="modal" id="deleteTaskModal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Delete Task?</p>
+            <button class="delete" aria-label="close" @click="hideDeleteTaskModal"></button>
+          </header>
+          <section class="modal-card-body">
+            <p id="deleteTaskName"></p>
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button is-danger" @click="confirmDeleteTask()">Confirm</button>
+            <button class="button" @click="hideDeleteTaskModal">Cancel</button>
+          </footer>
+        </div>
+      </div>
+      <!-- New List -->
+      <div class="modal" id="newListModal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">New list</p>
+            <button class="delete" aria-label="close" @click="hideNewListModal"></button>
+          </header>
+          <section class="modal-card-body">
+            <div class="field">
+              <div class="control">
+                <input class="input" type="text" placeholder="List Name" v-model="newListName">
+              </div>
+            </div>
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button is-success" @click="addNewList()">Save</button>
+            <button class="button" @click="hideNewListModal">Cancel</button>
+          </footer>
+        </div>
+      </div>
+      <!-- Edit List -->
+      <div class="modal" id="editListModal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Edit list</p>
+            <button class="delete" aria-label="close" @click="hideEditListModal"></button>
+          </header>
+          <section class="modal-card-body">
+            <div class="field">
+              <div class="control">
+                <input class="input" type="text" placeholder="List Name" v-model="editList.name">
+              </div>
+            </div>
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button is-success" @click="saveEditList()">Save</button>
+            <button class="button" @click="hideEditListModal">Cancel</button>
+          </footer>
+        </div>
+      </div>
+      <!-- Delete List -->
+      <div class="modal" id="deleteListModal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Delete List?</p>
+            <button class="delete" aria-label="close" @click="hideDeleteListModal"></button>
+          </header>
+          <section class="modal-card-body">
+            <p id="deleteListName"></p>
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button is-danger" @click="confirmDeleteList()">Confirm</button>
+            <button class="button" @click="hideDeleteListModal">Cancel</button>
+          </footer>
+        </div>
+      </div>
+
+      <!-- Alert Tabs -->
+      <div id="alert" style="position: fixed; right: 0; z-index: 100;" class="m-2"></div>
+
+      <!-- Header -->
+      <section class="hero is-link">
+        <div class="hero-body">
+          <div class="container">
+            <p class="title has-text-weight-bold is-1">My ToDo List <span class="ml-5 icon is-clickable has-text-white" id="addNewListButton" @click="showNewListModal"><i class="fas fa-plus-circle"></i></span></p>
+            <p class="my-2 subtitle"><span>Completed: {{ completedTaskCount }} Tasks</span><span class="ml-5">Incomplete: {{ incompleteTaskCount }} Tasks</span></p>
+            <p class="my-2 subtitle">Flagged: {{ flaggedTaskCount }}</p>
+          </div>
+        </div>
+      </section>
+      <!-- App -->
+      <div class="container">
+        <template v-for="list in todoLists">
+          <div class="my-5">
+            <div class="title">
+              <span class="is-clickable is-unselectable" @click="showEditListModal(list)">
+                {{ list.name }}
+                <span class="icon is-size-4">
+                  <i class="fas fa-pencil-alt"></i>
+                </span>
+              </span>
+              <span class="ml-5 icon is-clickable has-text-danger" @click="showDeleteListModal(list)">
+                <i class="fas fa-trash"></i>
+              </span>
+            </div>
+            <div class="columns">
+              <!-- Task -->
+              <div class="column is-8">
+                <template v-for="task in filteredTasks" :key="task.id">
+                  <div class="py-3 mb-2 box level" v-if="task.listId === list.id">
+                    <div class="control">
+                      <label class="checkbox">
+                        <input type="checkbox" v-model="task.isCompleted" />
+                        <span :style="{'text-decoration': task.isCompleted ? 'line-through' : 'none'}" :class="['is-unselectable ml-1', (task.color === 'red') ? 'has-text-danger' : (task.color === 'green') ? 'has-text-success' : 'has-text-black']"><span>{{ task.name }}</span> <span v-if="task.due">(Due by {{ task.due }})</span> <span v-if="task.isFlagged"><i class="fas fa-flag"></i></span></span>
+                      </label>
+                    </div>
+                    <!-- Task options -->
+                    <div class="level-right">
+                      <!-- Edit Task -->
+                      <span class="icon is-small is-clickable" @click="showEditTaskModal(task)">
+                        <i class="fas fa-edit"></i>
+                      </span>
+                      <!-- Delete Task -->
+                      <span class="ml-5 icon is-small is-clickable" @click="showDeleteTaskModal(task)">
+                        <i class="fas fa-trash-alt"></i>
+                      </span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+              <!-- Filters and Sort -->
+              <div class="column is-4">
+                <!-- Filters -->
+                <div class="card">
+                  <header class="card-header has-background-link">
+                    <p class="card-header-title has-text-white">Filters</p>
+                    <p class="card-header-icon">
+                      <span class="card-header-icon icon has-text-white">
+                        <i class="fas fa-filter"></i>
+                      </span>
+                    </p>
+                  </header>
+                  <div class="card-content">
+                    <template v-for="item in filters">
+                      <div class="content" v-if="item.listId === list.id">
+                        <div class="control">
+                          <label class="checkbox">
+                            <input type="checkbox" v-model="item.hideCompletedTasks"/>
+                            <span class="ml-1 is-unselectable">Hide completed tasks</span>
+                          </label>
+                        </div>
+                        <div class="control">
+                          <label class="checkbox">
+                            <input type="checkbox" v-model="item.showOnlyFlaggedTasks"/>
+                            <span class="ml-1 is-unselectable">Show only flagged tasks</span>
+                          </label>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <!-- Sorts -->
+                <div class="my-5 card">
+                  <header class="card-header has-background-link">
+                    <p class="card-header-title has-text-white">Sort</p>
+                    <p class="card-header-icon">
+                      <span class="card-header-icon icon has-text-white">
+                        <i class="fas fa-sort"></i>
+                      </span>
+                    </p>
+                  </header>
+                  <div class="card-content">
+                    <template v-for="item in sorts">
+                      <div class="content" v-if="item.listId === list.id">
+                        <div class="control">
+                          <label class="radio">
+                            <input type="radio" :name="`sort-${list.id}`" value="0" v-model="item.sortType">
+                            <span class="ml-1 is-unselectable">Sort alphabetically</span>
+                          </label>
+                        </div>
+                        <div class="control">
+                          <label class="radio">
+                            <input type="radio" :name="`sort-${list.id}`" value="1" v-model="item.sortType">
+                            <span class="ml-1 is-unselectable">Sort incomplete tasks</span>
+                          </label>
+                        </div>
+                        <div class="control">
+                          <label class="radio">
+                            <input type="radio" :name="`sort-${list.id}`" value="2" v-model="item.sortType">
+                            <span class="ml-1 is-unselectable">Sort flagged task first</span>
+                          </label>
+                        </div>
+                        <div class="control">
+                          <label class="radio">
+                            <input type="radio" :name="`sort-${list.id}`" value="3" v-model="item.sortType">
+                            <span class="ml-1 is-unselectable">Sort by due date (ascending)</span>
+                          </label>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div v-if="!todoLists.length">
+          <p class="my-5 has-text-centered">No lists found</p>
+        </div>
+        <!-- New Task -->
+        <div class="mb-5 field is-grouped is-flex is-align-items-flex-end is-justify-content-center">
+          <!-- name -->
+          <div class="p-3 control">
+            <input class="input" type="text" placeholder="Task Name" v-model="newTask.name" />
+          </div>
+          <!-- list -->
+          <div class="p-3 control">
+            <div class="select">
+              <select v-model="newTask.listId">
+                <option value="null" selected disabled>-- Select a list --</option>
+                <option v-for="list in todoLists" :value="list.id">{{ list.name }}</option>
+              </select>
+            </div>
+          </div>
+          <!-- date -->
+          <div class="p-3 control">
+            <input class="input" type="date" v-model="newTask.due">
+          </div>
+          <!-- flag -->
+          <div class="p-4 control">
+            <span class="icon-text is-clickable tags has-addons" @click="newTask.isFlagged = !newTask.isFlagged">
+              <span :class="['icon tag is-medium has-background-dark', newTask.isFlagged ? 'has-text-warning' : 'has-text-light']">
+                <i class="fas fa-flag"></i>
+              </span>
+              <span class="tag is-link is-medium is-unselectable">Flag</span>
+            </span>
+          </div>
+          <!-- color -->
+          <div class="p-2 control" style="border: 0.25rem dashed lightgrey; border-radius: 0.75rem;">
+            <p class="mb-2 has-text-centered is-unselectable">Task color</p>
+            <div class="is-flex" style="column-gap: 0.5rem;">
+              <div class="is-flex">
+                <span class="icon is-medium has-background-black box is-clickable" @click="newTask.color = 'black'">
+                  <span v-if="newTask.color === 'black'">
+                    <i class="fas fa-check fa-fw has-text-white"></i>
+                  </span>
+                </span>
+              </div>
+              <div class="is-flex">
+                <span class="icon is-medium has-background-danger box is-clickable" @click="newTask.color = 'red'">
+                  <span v-if="newTask.color === 'red'">
+                    <i class="fas fa-check fa-fw has-text-white"></i>
+                  </span>
+                </span>
+              </div>
+              <div class="is-flex">
+                <span class="icon is-medium has-background-success box is-clickable" @click="newTask.color = 'green'">
+                  <span v-if="newTask.color === 'green'">
+                    <i class="fas fa-check fa-fw has-text-white"></i>
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <!-- save -->
+          <div class="p-3 control">
+            <button class="px-5 button is-link" @click="addNewTask()"> Save </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- JS -->
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        }
+      }
+    </script>
+    <script type="module" src="app.js"></script>
+    <script type="module" src="tooltips.js"></script>
+  </body>
+</html>
